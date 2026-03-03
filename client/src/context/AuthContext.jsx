@@ -37,7 +37,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const registerBarberWithToken = async (tokenValue, payload) => {
-    const { data } = await api.post(`/auth/barber-register/${tokenValue}`, payload);
+    const url = tokenValue ? `/auth/barber-register/${tokenValue}` : "/auth/barber-register";
+    const { data } = await api.post(url, payload);
     saveSession(data.token, data.user);
     return data;
   };

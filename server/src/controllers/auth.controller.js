@@ -3,6 +3,15 @@ const { v4: uuidv4 } = require("uuid");
 const prisma = require("../services/prisma.service");
 const generateToken = require("../utils/generateToken");
 const { sendBarberInviteEmail } = require("../services/mail.service");
+const { getImageKitAuthParams } = require("../services/imagekit.service");
+
+const getOrCreateAppSetting = async () => {
+  return prisma.appSetting.upsert({
+    where: { id: 1 },
+    update: {},
+    create: { id: 1, requireBarberInvite: false },
+  });
+};
 
 const sanitizeUser = (user) => ({
   id: user.id,
@@ -60,14 +69,27 @@ const login = async (req, res) => {
 const barberRegisterWithToken = async (req, res) => {
   try {
     const { token } = req.params;
-    const { name, phone, email, password, salonName, address, lat, lng, avgServiceTime } = req.body;
-    const invite = await prisma.barberInvite.findUnique({ where: { token } });
-    if (!invite || invite.usedAt) {
-      return res.status(400).json({ message: "Invalid or used invite token" });
+    const { name, phone, email, password, salonName, address, lat, lng, avgServiceTime, imageUrl } = req.body;
+    const settings = await getOrCreateAppSetting();
+    let invite = null;
+
+    if (settings.requireBarberInvite) {
+      if (!token) {
+        return res.status(400).json({ message: "Invite token required for barber registration" });
+      }
+      invite = await prisma.barberInvite.findUnique({ where: { token } });
+      if (!invite || invite.usedAt) {
+        return res.status(400).json({ message: "Invalid or used invite token" });
+      }
+      if (invite.email.toLowerCase() !== email.toLowerCase()) {
+        return res.status(400).json({ message: "Invite token does not match this email" });
+      }
     }
-    if (invite.email.toLowerCase() !== email.toLowerCase()) {
-      return res.status(400).json({ message: "Invite token does not match this email" });
+
+    if (!salonName && !invite?.salonName) {
+      return res.status(400).json({ message: "Salon name is required" });
     }
+
     const existing = await prisma.user.findFirst({
       where: { OR: [{ email }, { phone }] },
     });
@@ -80,8 +102,9 @@ const barberRegisterWithToken = async (req, res) => {
       });
       const salon = await tx.salon.create({
         data: {
-          name: salonName || invite.salonName,
+          name: salonName || invite?.salonName,
           address,
+          imageUrl: imageUrl || null,
           latitude: Number(lat),
           longitude: Number(lng),
           ownerId: barber.id,
@@ -90,10 +113,12 @@ const barberRegisterWithToken = async (req, res) => {
           isVerified: true,
         },
       });
-      await tx.barberInvite.update({
-        where: { token },
-        data: { usedAt: new Date() },
-      });
+      if (invite) {
+        await tx.barberInvite.update({
+          where: { token },
+          data: { usedAt: new Date() },
+        });
+      }
       return { barber: { ...barber, salon: { id: salon.id } }, salon };
     });
 
@@ -122,9 +147,98 @@ const sendInvite = async (req, res) => {
   }
 };
 
+const getBarberRegistrationPolicy = async (_req, res) => {
+  try {
+    const settings = await getOrCreateAppSetting();
+    return res.json({ requireBarberInvite: settings.requireBarberInvite });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to fetch registration policy", error: error.message });
+  }
+};
+
+const getAdminSettings = async (_req, res) => {
+  try {
+    const settings = await getOrCreateAppSetting();
+    return res.json({ requireBarberInvite: settings.requireBarberInvite });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to fetch admin settings", error: error.message });
+  }
+};
+
+const updateAdminSettings = async (req, res) => {
+  try {
+    const { requireBarberInvite } = req.body;
+    if (typeof requireBarberInvite !== "boolean") {
+      return res.status(400).json({ message: "requireBarberInvite must be boolean" });
+    }
+    const settings = await prisma.appSetting.upsert({
+      where: { id: 1 },
+      update: { requireBarberInvite },
+      create: { id: 1, requireBarberInvite },
+    });
+    return res.json({ requireBarberInvite: settings.requireBarberInvite });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to update admin settings", error: error.message });
+  }
+};
+
+const getImageUploadAuth = async (_req, res) => {
+  try {
+    if (!process.env.IMAGEKIT_PUBLIC_KEY || !process.env.IMAGEKIT_PRIVATE_KEY || !process.env.IMAGEKIT_URL_ENDPOINT) {
+      return res.status(500).json({ message: "ImageKit environment is not configured" });
+    }
+    return res.json(getImageKitAuthParams());
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to initialize ImageKit auth", error: error.message });
+  }
+};
+
+const getAdminUsersOverview = async (_req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      include: {
+        salon: {
+          select: { id: true, name: true, address: true, imageUrl: true, createdAt: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const customers = users
+      .filter((u) => u.role === "customer")
+      .map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        createdAt: u.createdAt,
+      }));
+
+    const barbers = users
+      .filter((u) => u.role === "barber")
+      .map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        createdAt: u.createdAt,
+        salon: u.salon,
+      }));
+
+    return res.json({ customers, barbers });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to fetch admin users overview", error: error.message });
+  }
+};
+
 module.exports = {
   registerCustomer,
   login,
   barberRegisterWithToken,
   sendInvite,
+  getBarberRegistrationPolicy,
+  getAdminSettings,
+  updateAdminSettings,
+  getImageUploadAuth,
+  getAdminUsersOverview,
 };

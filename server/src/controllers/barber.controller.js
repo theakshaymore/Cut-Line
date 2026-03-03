@@ -77,10 +77,41 @@ const queueNoShow = async (req, res) => {
   }
 };
 
+const getMySalon = async (req, res) => {
+  try {
+    const salon = await prisma.salon.findUnique({
+      where: { id: req.user.salonId },
+      include: { chairs: true },
+    });
+    if (!salon) return res.status(404).json({ message: "Salon not found" });
+    return res.json(salon);
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to fetch salon", error: error.message });
+  }
+};
+
+const updateSalonPhoto = async (req, res) => {
+  try {
+    const { imageUrl } = req.body;
+    if (!imageUrl || typeof imageUrl !== "string") {
+      return res.status(400).json({ message: "imageUrl is required" });
+    }
+    const salon = await prisma.salon.update({
+      where: { id: req.user.salonId },
+      data: { imageUrl },
+    });
+    return res.json({ message: "Salon image updated", salon });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to update salon image", error: error.message });
+  }
+};
+
 module.exports = {
   getBarberQueue,
   assignChair,
   chairDone,
   chairIdle,
   queueNoShow,
+  getMySalon,
+  updateSalonPhoto,
 };

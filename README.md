@@ -42,6 +42,9 @@ cd ../client && npm install
 2. Configure environment files
 - Copy `server/.env.example` to `server/.env`
 - Copy `client/.env.example` to `client/.env`
+- Fill ImageKit values in both files:
+  - `IMAGEKIT_PUBLIC_KEY`, `IMAGEKIT_PRIVATE_KEY`, `IMAGEKIT_URL_ENDPOINT` (server)
+  - `VITE_IMAGEKIT_PUBLIC_KEY` (client)
 
 3. Run Prisma
 ```bash
@@ -67,6 +70,11 @@ Frontend runs at `http://localhost:5173` and backend at `http://localhost:5000`.
 ## Theme
 - UI supports dark/light mode toggle from the top navbar.
 - Theme preference is stored in browser localStorage (`nextcut_theme`).
+
+## Shop Image Uploads
+- Shop photos are uploaded to ImageKit from client using signed auth params from backend.
+- Uploaded URL is stored in PostgreSQL (`Salon.imageUrl`).
+- Barber can set shop photo during registration and update/replace it later from dashboard.
 
 ## API Summary
 ### Auth

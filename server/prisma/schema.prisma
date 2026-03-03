@@ -52,6 +52,7 @@ model Salon {
   id                String       @id @default(uuid())
   name              String
   address           String
+  imageUrl          String?
   latitude          Float
   longitude         Float
   ownerId           String       @unique
@@ -113,4 +114,11 @@ model BarberInvite {
   token     String    @unique
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+}
+
+model AppSetting {
+  id                  Int      @id @default(1)
+  requireBarberInvite Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }

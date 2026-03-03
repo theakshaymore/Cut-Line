@@ -1,3 +1,5 @@
+import { Armchair, CheckCircle2, RefreshCcw, Scissors } from "lucide-react";
+
 const statusClass = {
   idle: "bg-emerald-100 text-emerald-700",
   occupied: "bg-amber-100 text-amber-700",
@@ -8,7 +10,7 @@ const ChairCard = ({ chair, queueAvailable, onAssign, onDone, onIdle }) => {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
       <div className="flex items-center justify-between">
-        <h4 className="font-semibold">{chair.label}</h4>
+        <h4 className="font-semibold flex items-center gap-2"><Armchair size={16} />{chair.label}</h4>
         <span className={`text-xs px-2 py-1 rounded-full ${statusClass[chair.status] || "bg-slate-100"}`}>
           {chair.status}
         </span>
@@ -22,17 +24,17 @@ const ChairCard = ({ chair, queueAvailable, onAssign, onDone, onIdle }) => {
       <div className="mt-3">
         {chair.status === "idle" && queueAvailable > 0 && (
           <button className="w-full bg-brand text-white rounded py-2" onClick={() => onAssign(chair.id)}>
-            Assign Next
+            <span className="inline-flex items-center gap-2"><Scissors size={14} />Assign Next</span>
           </button>
         )}
         {chair.status === "occupied" && (
           <button className="w-full bg-amber-600 text-white rounded py-2" onClick={() => onDone(chair.id)}>
-            Mark Done
+            <span className="inline-flex items-center gap-2"><CheckCircle2 size={14} />Mark Done</span>
           </button>
         )}
         {chair.status === "done" && (
           <button className="w-full bg-slate-800 text-white rounded py-2" onClick={() => onIdle(chair.id)}>
-            Reset to Idle
+            <span className="inline-flex items-center gap-2"><RefreshCcw size={14} />Reset to Idle</span>
           </button>
         )}
       </div>

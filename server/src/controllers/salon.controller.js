@@ -41,6 +41,7 @@ const getNearbySalons = async (req, res) => {
             id: salon.id,
             name: salon.name,
             address: salon.address,
+            imageUrl: salon.imageUrl,
             latitude: salon.latitude,
             longitude: salon.longitude,
             distanceKm: Number(distance.toFixed(2)),

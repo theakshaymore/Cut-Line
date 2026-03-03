@@ -1,4 +1,5 @@
 import WaitTimeBadge from "./WaitTimeBadge";
+import { BadgeAlert, UserRound } from "lucide-react";
 
 const QueueList = ({ queue = [], onNoShow }) => {
   return (
@@ -12,10 +13,11 @@ const QueueList = ({ queue = [], onNoShow }) => {
               <p className="text-sm text-slate-600 dark:text-slate-300">{entry.service}</p>
             </div>
             <div className="flex items-center gap-2">
+              <UserRound size={15} />
               <WaitTimeBadge minutes={entry.estimatedWait} />
               {onNoShow && (
                 <button className="text-xs bg-red-600 text-white px-2 py-1 rounded" onClick={() => onNoShow(entry.id)}>
-                  No-Show
+                  <span className="inline-flex items-center gap-1"><BadgeAlert size={12} /> No-Show</span>
                 </button>
               )}
             </div>

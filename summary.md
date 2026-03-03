@@ -268,3 +268,117 @@ When future code changes are made, update this `summary.md` in the same change s
   - `client/src/App.jsx`
 - Increased global typography weight/size for better readability with this font:
   - `client/src/index.css`
+- Normalized Inter typography to standard UI defaults for consistency:
+  - `font-size: 16px`, `font-weight: 400`
+  - removed forced global `h1-h4` weight override
+  - file: `client/src/index.css`
+- Fixed role-based post-login routing in customer login page:
+  - `admin` -> `/admin`
+  - `barber` -> `/barber/dashboard`
+  - `customer` -> `/salons`
+  - file: `client/src/pages/CustomerLogin.jsx`
+
+### Latest auth policy update
+- Added persisted app-level setting to control barber invite requirement:
+  - Prisma model: `AppSetting` (singleton row, default `requireBarberInvite=false`)
+  - Files:
+    - `server/prisma/schema.prisma`
+    - `server/prisma/migrations/20260303234500_add_app_setting/migration.sql`
+- Added backend endpoints:
+  - `GET /api/auth/barber-registration-policy` (public)
+  - `GET /api/auth/admin/settings` (admin)
+  - `PATCH /api/auth/admin/settings` (admin)
+  - `POST /api/auth/barber-register` (no token path)
+  - file updates:
+    - `server/src/controllers/auth.controller.js`
+    - `server/src/routes/auth.routes.js`
+- Updated barber registration flow:
+  - If `requireBarberInvite=true`: token required and validated
+  - If `false`: token not required
+  - Files:
+    - `client/src/context/AuthContext.jsx`
+    - `client/src/pages/BarberRegister.jsx`
+- Added Admin Panel toggle UI:
+  - Label: `Authorized Accounts`
+  - Default OFF behavior is enforced by DB default
+  - File:
+    - `client/src/pages/AdminPanel.jsx`
+
+### Latest media + UI enhancement update
+- Added ImageKit integration for shop images:
+  - New backend ImageKit auth service:
+    - `server/src/services/imagekit.service.js`
+  - New endpoint for ImageKit auth params:
+    - `GET /api/auth/image-upload-auth`
+  - Added ImageKit env variables:
+    - `server/.env.example`
+    - `client/.env.example`
+  - Added `imagekit` dependency:
+    - `server/package.json`
+- Added salon image field:
+  - Prisma `Salon.imageUrl` and migration:
+    - `server/prisma/schema.prisma`
+    - `server/prisma/migrations/20260304101500_add_salon_image/migration.sql`
+- Barber registration now supports shop photo upload:
+  - Client uploads image to ImageKit then sends URL to backend
+  - Files:
+    - `client/src/utils/imageUpload.js`
+    - `client/src/pages/BarberRegister.jsx`
+    - `server/src/controllers/auth.controller.js`
+- Added shop image edit in barber dashboard:
+  - New barber APIs:
+    - `GET /api/barber/salon`
+    - `PATCH /api/barber/salon/photo`
+  - Files:
+    - `server/src/controllers/barber.controller.js`
+    - `server/src/routes/barber.routes.js`
+    - `client/src/pages/BarberDashboard.jsx`
+- Upgraded UI/UX visuals and iconography:
+  - Landing hero section with image + highlights:
+    - `client/src/pages/Landing.jsx`
+  - Login/Register pages now include visual image layouts:
+    - `client/src/pages/CustomerLogin.jsx`
+    - `client/src/pages/CustomerRegister.jsx`
+    - `client/src/pages/BarberLogin.jsx`
+    - `client/src/pages/BarberRegister.jsx`
+  - Salon listing/detail upgraded from basic boxes to richer cards:
+    - `client/src/pages/SalonList.jsx`
+    - `client/src/components/SalonCard.jsx`
+    - `client/src/pages/SalonDetail.jsx`
+  - Added meaningful icons to queue/chair/admin/my-queue views:
+    - `client/src/components/QueueList.jsx`
+    - `client/src/components/ChairCard.jsx`
+    - `client/src/pages/MyQueue.jsx`
+    - `client/src/pages/AdminPanel.jsx`
+
+### Latest navigation + customer/admin UX update
+- Added breadcrumb navigation across pages:
+  - `client/src/components/Breadcrumbs.jsx`
+  - wired in `client/src/App.jsx`
+- Added public route guard behavior:
+  - logged-in users are redirected away from login/register pages to role home
+  - file: `client/src/App.jsx`
+- Added global customer "your-turn" toast popup listener:
+  - file: `client/src/App.jsx`
+- Changed dark theme base to pure black/neutral tone:
+  - `client/src/index.css`
+  - `client/src/components/Navbar.jsx`
+  - app shell in `client/src/App.jsx`
+- Customer homepage (`/salons`) now includes:
+  - right-side "My Waiting List" queue status panel
+  - refresh button for queue status
+  - first-load skeleton cards
+  - file: `client/src/pages/SalonList.jsx`
+- Queue join UX updates:
+  - after join, redirect to customer homepage (`/salons`)
+  - disable join button with "Already Joined" when active queue exists
+  - file: `client/src/pages/SalonDetail.jsx`
+- Admin panel now includes separate sections:
+  - all customers list
+  - all barbers with shop details
+  - new backend endpoint:
+    - `GET /api/auth/admin/users-overview`
+  - files:
+    - `server/src/controllers/auth.controller.js`
+    - `server/src/routes/auth.routes.js`
+    - `client/src/pages/AdminPanel.jsx`
