@@ -26,9 +26,9 @@ const BarberLogin = () => {
   return (
     <main className="max-w-md mx-auto py-10 px-4">
       <h1 className="text-2xl font-bold">Barber Login</h1>
-      <form onSubmit={onSubmit} className="bg-white border rounded-xl p-5 mt-4 space-y-3">
-        <input className="w-full border rounded px-3 py-2" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input className="w-full border rounded px-3 py-2" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+      <form onSubmit={onSubmit} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 mt-4 space-y-3">
+        <input className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <input className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         <button className="w-full bg-brand text-white rounded px-3 py-2">Login</button>
       </form>
     </main>

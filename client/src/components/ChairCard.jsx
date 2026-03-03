@@ -6,7 +6,7 @@ const statusClass = {
 
 const ChairCard = ({ chair, queueAvailable, onAssign, onDone, onIdle }) => {
   return (
-    <div className="bg-white rounded-xl border p-4">
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
       <div className="flex items-center justify-between">
         <h4 className="font-semibold">{chair.label}</h4>
         <span className={`text-xs px-2 py-1 rounded-full ${statusClass[chair.status] || "bg-slate-100"}`}>
@@ -16,7 +16,7 @@ const ChairCard = ({ chair, queueAvailable, onAssign, onDone, onIdle }) => {
       {chair.currentEntry?.customer && (
         <div className="mt-3 text-sm">
           <p className="font-medium">{chair.currentEntry.customer.name}</p>
-          <p className="text-slate-600">{chair.currentEntry.service}</p>
+          <p className="text-slate-600 dark:text-slate-300">{chair.currentEntry.service}</p>
         </div>
       )}
       <div className="mt-3">

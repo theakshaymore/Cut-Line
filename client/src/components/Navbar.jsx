@@ -1,9 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Scissors } from "lucide-react";
+import { Moon, Scissors, Sun } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const onLogout = () => {
@@ -12,14 +14,24 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white border-b px-6 py-3 flex items-center justify-between">
+    <nav className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between dark:bg-slate-900 dark:border-slate-700">
       <Link to="/" className="flex items-center gap-2 text-brand font-bold text-lg">
         <Scissors size={18} /> NextCut
       </Link>
       <div className="flex items-center gap-4 text-sm">
+        <button
+          className="border border-slate-300 rounded px-2 py-1 dark:border-slate-600"
+          onClick={toggleTheme}
+          type="button"
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
         {user && <span>{user.name}</span>}
         {user && (
-          <button className="bg-slate-900 text-white px-3 py-1 rounded" onClick={onLogout}>
+          <button
+            className="bg-slate-900 text-white px-3 py-1 rounded dark:bg-slate-100 dark:text-slate-900"
+            onClick={onLogout}
+          >
             Logout
           </button>
         )}

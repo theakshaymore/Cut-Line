@@ -16,6 +16,21 @@ NextCut is a full-stack digital salon queue management system with two roles:
 - Node.js 20+
 - PostgreSQL
 - Redis
+- Docker (optional, recommended for local DB/cache)
+
+## Quick Infra Setup (Docker)
+From repository root:
+```bash
+docker compose up -d
+```
+This starts:
+- PostgreSQL on `localhost:5432` (db: `nextcut`, user/pass: `postgres/postgres`)
+- Redis on `localhost:6379`
+
+To stop:
+```bash
+docker compose down
+```
 
 ## Setup
 1. Install dependencies
@@ -48,6 +63,10 @@ npm run dev
 ```
 
 Frontend runs at `http://localhost:5173` and backend at `http://localhost:5000`.
+
+## Theme
+- UI supports dark/light mode toggle from the top navbar.
+- Theme preference is stored in browser localStorage (`nextcut_theme`).
 
 ## API Summary
 ### Auth

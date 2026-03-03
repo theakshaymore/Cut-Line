@@ -214,3 +214,43 @@ When future code changes are made, update this `summary.md` in the same change s
 - Files touched
 - Any migration/env/runtime impact
 
+## 9. Latest updates (this change set)
+
+### Added local infra orchestration
+- Added root Docker Compose file for PostgreSQL + Redis:
+  - `docker-compose.yml`
+- Services included:
+  - `postgres:16` exposed on `5432` with db `nextcut`
+  - `redis:7` exposed on `6379`
+- Added persistent named volumes and health checks.
+
+### Added dark theme with toggle
+- Enabled Tailwind class-based dark mode (`darkMode: "class"`).
+- Added theme context with persistence:
+  - `client/src/context/ThemeContext.jsx`
+  - Stores selected theme in localStorage key `nextcut_theme`
+  - Applies/removes `dark` class on `<html>`
+- Wired provider in app bootstrap:
+  - `client/src/main.jsx`
+- Added navbar theme toggle button (sun/moon icons):
+  - `client/src/components/Navbar.jsx`
+- Updated app shell and core pages/components with dark-mode styles:
+  - `client/src/App.jsx`
+  - `client/src/index.css`
+  - `client/src/components/SalonCard.jsx`
+  - `client/src/components/QueueList.jsx`
+  - `client/src/components/ChairCard.jsx`
+  - `client/src/components/WaitTimeBadge.jsx`
+  - `client/src/pages/Landing.jsx`
+  - `client/src/pages/CustomerLogin.jsx`
+  - `client/src/pages/CustomerRegister.jsx`
+  - `client/src/pages/BarberLogin.jsx`
+  - `client/src/pages/BarberRegister.jsx`
+  - `client/src/pages/SalonDetail.jsx`
+  - `client/src/pages/MyQueue.jsx`
+  - `client/src/pages/BarberDashboard.jsx`
+  - `client/src/pages/AdminPanel.jsx`
+
+### Docs updates
+- Updated `README.md` with Docker Compose startup/stop instructions.
+- Added theme section documenting dark/light toggle behavior.

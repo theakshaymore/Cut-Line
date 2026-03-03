@@ -4,4 +4,10 @@
 
 body {
   color: #0f172a;
+  background: #f1f5f9;
+}
+
+.dark body {
+  color: #e2e8f0;
+  background: #020617;
 }

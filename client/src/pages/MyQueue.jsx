@@ -30,9 +30,9 @@ const MyQueue = () => {
   return (
     <main className="max-w-2xl mx-auto py-10 px-4">
       <h1 className="text-2xl font-bold">My Queue Status</h1>
-      <div className="bg-white rounded-xl border p-5 mt-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 mt-4">
         <p className="text-xl font-semibold">Position #{entry.position}</p>
-        <p className="text-sm text-slate-600 mt-1">Estimated wait: {formatTime(entry.estimatedWait)}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Estimated wait: {formatTime(entry.estimatedWait)}</p>
         <div className="mt-4 h-3 bg-slate-200 rounded-full overflow-hidden">
           <div className="h-full bg-brand" style={{ width: `${progress}%` }} />
         </div>

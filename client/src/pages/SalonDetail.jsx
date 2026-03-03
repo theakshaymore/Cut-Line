@@ -49,14 +49,14 @@ const SalonDetail = () => {
   return (
     <main className="max-w-5xl mx-auto py-8 px-4">
       <h1 className="text-3xl font-black">{salon.name}</h1>
-      <p className="text-slate-600 mt-1">{salon.address}</p>
+      <p className="text-slate-600 dark:text-slate-300 mt-1">{salon.address}</p>
       <div className="mt-4 flex items-center gap-4">
         <span>Active queue: {salon.activeQueueLength}</span>
         <WaitTimeBadge minutes={salon.estimatedWait} />
       </div>
-      <div className="mt-6 bg-white rounded-xl border p-4 max-w-md">
+      <div className="mt-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 max-w-md">
         <label className="text-sm font-medium">Choose service</label>
-        <select className="w-full border rounded px-3 py-2 mt-1" value={service} onChange={(e) => setService(e.target.value)}>
+        <select className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2 mt-1" value={service} onChange={(e) => setService(e.target.value)}>
           <option>Haircut</option>
           <option>Beard Trim</option>
           <option>Hair + Beard</option>

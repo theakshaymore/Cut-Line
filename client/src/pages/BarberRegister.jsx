@@ -36,17 +36,17 @@ const BarberRegister = () => {
   return (
     <main className="max-w-2xl mx-auto py-10 px-4">
       <h1 className="text-2xl font-bold">Barber Registration</h1>
-      <p className="text-sm text-slate-600 mt-1">Invite token: {token ? "valid link" : "missing"}</p>
-      <form onSubmit={onSubmit} className="bg-white border rounded-xl p-5 mt-4 grid md:grid-cols-2 gap-3">
-        <input className="border rounded px-3 py-2" name="name" placeholder="Name" value={form.name} onChange={onChange} required />
-        <input className="border rounded px-3 py-2" name="phone" placeholder="Phone" value={form.phone} onChange={onChange} required />
-        <input className="border rounded px-3 py-2" name="email" type="email" placeholder="Email" value={form.email} onChange={onChange} required />
-        <input className="border rounded px-3 py-2" name="password" type="password" placeholder="Password" value={form.password} onChange={onChange} required />
-        <input className="border rounded px-3 py-2" name="salonName" placeholder="Salon Name" value={form.salonName} onChange={onChange} required />
-        <input className="border rounded px-3 py-2" name="avgServiceTime" type="number" min="5" placeholder="Avg Service Time" value={form.avgServiceTime} onChange={onChange} required />
-        <input className="border rounded px-3 py-2 md:col-span-2" name="address" placeholder="Address" value={form.address} onChange={onChange} required />
-        <input className="border rounded px-3 py-2" name="lat" placeholder="Latitude" value={form.lat} onChange={onChange} required />
-        <input className="border rounded px-3 py-2" name="lng" placeholder="Longitude" value={form.lng} onChange={onChange} required />
+      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Invite token: {token ? "valid link" : "missing"}</p>
+      <form onSubmit={onSubmit} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 mt-4 grid md:grid-cols-2 gap-3">
+        <input className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2" name="name" placeholder="Name" value={form.name} onChange={onChange} required />
+        <input className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2" name="phone" placeholder="Phone" value={form.phone} onChange={onChange} required />
+        <input className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2" name="email" type="email" placeholder="Email" value={form.email} onChange={onChange} required />
+        <input className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2" name="password" type="password" placeholder="Password" value={form.password} onChange={onChange} required />
+        <input className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2" name="salonName" placeholder="Salon Name" value={form.salonName} onChange={onChange} required />
+        <input className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2" name="avgServiceTime" type="number" min="5" placeholder="Avg Service Time" value={form.avgServiceTime} onChange={onChange} required />
+        <input className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2 md:col-span-2" name="address" placeholder="Address" value={form.address} onChange={onChange} required />
+        <input className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2" name="lat" placeholder="Latitude" value={form.lat} onChange={onChange} required />
+        <input className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-3 py-2" name="lng" placeholder="Longitude" value={form.lng} onChange={onChange} required />
         <button className="md:col-span-2 bg-brand text-white rounded px-3 py-2">Create Barber Account</button>
       </form>
     </main>
