@@ -1,61 +1,74 @@
-import Redis from "ioredis";
+const Redis = require("ioredis");
 
-let redis;
+let redis = null;
+let redisEnabled = false;
 
-export const getRedis = () => redis;
-
-export const initRedis = async () => {
-  redis = new Redis(process.env.REDIS_URL, {
-    maxRetriesPerRequest: 2,
-    lazyConnect: true,
-  });
-
-  redis.on("error", (err) => {
-    console.error("Redis error:", err.message);
-  });
-
+const initRedis = async () => {
   try {
-    await redis.connect();
-    console.log("Redis connected");
-  } catch (err) {
-    console.error("Redis connect failed, continuing without cache:", err.message);
+    redis = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 1,
+      enableReadyCheck: true,
+    });
+    redis.on("error", () => {});
+    await redis.ping();
+    redisEnabled = true;
+  } catch (_) {
+    redisEnabled = false;
     redis = null;
   }
 };
 
-export const setCustomerSocket = async (customerId, socketId) => {
-  if (!redis) return;
-  await redis.set(`socket:${customerId}`, socketId);
+const getRedis = () => redis;
+
+const setCustomerSocket = async (customerId, socketId) => {
+  if (!redisEnabled) return;
+  await redis.set(`socket:${customerId}`, socketId, "EX", 60 * 60 * 24);
 };
 
-export const removeCustomerSocket = async (customerId) => {
-  if (!redis) return;
+const deleteCustomerSocket = async (customerId) => {
+  if (!redisEnabled) return;
   await redis.del(`socket:${customerId}`);
 };
 
-export const cacheQueue = async (salonId, queueEntries) => {
-  if (!redis) return;
+const setJoinRateLimit = async (customerId, ttlSeconds = 10) => {
+  if (!redisEnabled) return true;
+  const key = `ratelimit:join:${customerId}`;
+  const exists = await redis.exists(key);
+  if (exists) return false;
+  await redis.set(key, "1", "EX", ttlSeconds);
+  return true;
+};
+
+const syncSalonQueueToRedis = async (salonId, queueEntries) => {
+  if (!redisEnabled) return;
   const key = `salon:${salonId}:queue`;
   await redis.del(key);
-  if (!queueEntries.length) return;
-  const args = queueEntries.flatMap((entry) => [entry.position, JSON.stringify(entry)]);
+  if (queueEntries.length === 0) return;
+  const args = [];
+  queueEntries.forEach((entry) => {
+    args.push(entry.position, JSON.stringify(entry));
+  });
   await redis.zadd(key, ...args);
 };
 
-export const cacheChairs = async (salonId, chairs) => {
-  if (!redis) return;
+const syncSalonChairsToRedis = async (salonId, chairs) => {
+  if (!redisEnabled) return;
   const key = `salon:${salonId}:chairs`;
   await redis.del(key);
-  if (!chairs.length) return;
-  const fields = chairs.flatMap((chair) => [chair.id, JSON.stringify(chair)]);
-  await redis.hset(key, ...fields);
+  if (chairs.length === 0) return;
+  const payload = {};
+  chairs.forEach((chair) => {
+    payload[chair.id] = JSON.stringify(chair);
+  });
+  await redis.hset(key, payload);
 };
 
-export const checkJoinRateLimit = async (customerId) => {
-  if (!redis) return false;
-  const key = `ratelimit:join:${customerId}`;
-  const exists = await redis.get(key);
-  if (exists) return true;
-  await redis.set(key, "1", "EX", 10);
-  return false;
+module.exports = {
+  initRedis,
+  getRedis,
+  setCustomerSocket,
+  deleteCustomerSocket,
+  setJoinRateLimit,
+  syncSalonQueueToRedis,
+  syncSalonChairsToRedis,
 };

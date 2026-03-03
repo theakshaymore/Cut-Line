@@ -1,5 +1,8 @@
 import { useSocketContext } from "../context/SocketContext";
 
-export default function useSocket() {
-  return useSocketContext().socket;
-}
+const useSocket = () => {
+  const { socket } = useSocketContext();
+  return socket;
+};
+
+export default useSocket;

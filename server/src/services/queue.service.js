@@ -1,269 +1,263 @@
-import { QueueStatus, ChairStatus } from "@prisma/client";
-import { prisma } from "../lib/prisma.js";
-import { calcWaitTime } from "../utils/calcWaitTime.js";
-import { cacheChairs, cacheQueue, checkJoinRateLimit } from "./redis.service.js";
+const prisma = require("./prisma.service");
+const calcWaitTime = require("../utils/calcWaitTime");
+const {
+  syncSalonQueueToRedis,
+  syncSalonChairsToRedis,
+} = require("./redis.service");
 
-const waitingInclude = {
-  customer: { select: { id: true, name: true, phone: true } },
-};
-
-export const hydrateRedisFromPostgres = async () => {
-  const salons = await prisma.salon.findMany({
-    include: {
-      chairs: true,
-      queueEntries: {
-        where: { status: QueueStatus.waiting },
-        orderBy: { position: "asc" },
-        include: waitingInclude,
-      },
-    },
-  });
-
-  await Promise.all(
-    salons.map(async (salon) => {
-      await cacheQueue(salon.id, salon.queueEntries);
-      await cacheChairs(salon.id, salon.chairs);
-    }),
-  );
-};
-
-export const getSalonQueueSnapshot = async (salonId) => {
-  const queue = await prisma.queueEntry.findMany({
-    where: { salonId, status: QueueStatus.waiting },
-    orderBy: { position: "asc" },
-    include: waitingInclude,
-  });
-  const salon = await prisma.salon.findUnique({ where: { id: salonId } });
-  const activeChairs = await prisma.chair.count({
-    where: { salonId, status: ChairStatus.occupied },
-  });
-  const totalWait = calcWaitTime({
-    waitingCount: queue.length,
-    activeChairs,
-    avgTime: salon?.avgServiceTime || 20,
-  });
-
-  return { queue, totalWait };
-};
-
-export const recalcWaitingPositions = async (salonId, io) => {
-  const waitingEntries = await prisma.queueEntry.findMany({
-    where: { salonId, status: QueueStatus.waiting },
-    orderBy: { joinedAt: "asc" },
-  });
-  const activeChairs = await prisma.chair.count({
-    where: { salonId, status: ChairStatus.occupied },
-  });
-  const salon = await prisma.salon.findUnique({ where: { id: salonId } });
-
-  const updates = waitingEntries.map((entry, idx) => {
-    const position = idx + 1;
-    const estimatedWait = calcWaitTime({
-      waitingCount: position,
-      activeChairs,
-      avgTime: salon?.avgServiceTime || 20,
-    });
-    return prisma.queueEntry.update({
-      where: { id: entry.id },
-      data: { position, estimatedWait },
-    });
-  });
-
-  if (updates.length) {
-    await prisma.$transaction(updates);
-  }
-
-  const updatedQueue = await prisma.queueEntry.findMany({
-    where: { salonId, status: QueueStatus.waiting },
-    orderBy: { position: "asc" },
-    include: waitingInclude,
-  });
-
-  await cacheQueue(salonId, updatedQueue);
-
-  updatedQueue.forEach((entry) => {
-    io.to(`customer:${entry.customerId}`).emit("position-changed", {
-      newPosition: entry.position,
-      estimatedWait: entry.estimatedWait,
-    });
-  });
-
-  io.to(`salon:${salonId}`).emit("queue-updated", {
-    queue: updatedQueue,
-    totalWait: updatedQueue[updatedQueue.length - 1]?.estimatedWait || 0,
-  });
-};
-
-export const joinQueue = async ({ customerId, salonId, service, io }) => {
-  const rateLimited = await checkJoinRateLimit(customerId);
-  if (rateLimited) {
-    throw new Error("Too many attempts. Try again in a few seconds.");
-  }
-
-  const existing = await prisma.queueEntry.findFirst({
-    where: {
-      customerId,
-      status: { in: [QueueStatus.waiting, QueueStatus.called, QueueStatus.seated] },
-    },
-  });
-  if (existing) throw new Error("You already have an active queue entry.");
-
-  const [salon, activeChairs, maxPosition] = await Promise.all([
+const getSalonSnapshot = async (salonId) => {
+  const [salon, waitingQueue, chairs] = await Promise.all([
     prisma.salon.findUnique({ where: { id: salonId } }),
-    prisma.chair.count({ where: { salonId, status: ChairStatus.occupied } }),
-    prisma.queueEntry.aggregate({
-      where: { salonId, status: QueueStatus.waiting },
-      _max: { position: true },
+    prisma.queueEntry.findMany({
+      where: { salonId, status: "waiting" },
+      orderBy: { position: "asc" },
+      include: { customer: { select: { id: true, name: true } } },
+    }),
+    prisma.chair.findMany({
+      where: { salonId },
+      include: {
+        currentEntry: {
+          include: { customer: { select: { id: true, name: true } } },
+        },
+      },
+      orderBy: { createdAt: "asc" },
     }),
   ]);
+  return { salon, waitingQueue, chairs };
+};
 
-  if (!salon) throw new Error("Salon not found.");
-
-  const position = (maxPosition._max.position || 0) + 1;
-  const estimatedWait = calcWaitTime({
-    waitingCount: position,
+const getEstimatedWait = async (salonId) => {
+  const { salon, waitingQueue, chairs } = await getSalonSnapshot(salonId);
+  const activeChairs = chairs.filter((c) => c.status === "occupied").length;
+  return calcWaitTime({
     activeChairs,
-    avgTime: salon.avgServiceTime,
+    waitingCount: waitingQueue.length,
+    avgServiceTime: salon?.avgServiceTime || 20,
   });
+};
 
+const emitQueueAndChairUpdates = async (io, salonId) => {
+  const { waitingQueue, chairs } = await getSalonSnapshot(salonId);
+  const totalWait = await getEstimatedWait(salonId);
+  await syncSalonQueueToRedis(salonId, waitingQueue);
+  await syncSalonChairsToRedis(salonId, chairs);
+  io.to(`salon:${salonId}`).emit("queue-updated", { queue: waitingQueue, totalWait });
+  chairs.forEach((chair) => {
+    io.to(`salon:${salonId}`).emit("chair-updated", {
+      chairId: chair.id,
+      status: chair.status,
+      currentCustomer: chair.currentEntry?.customer || null,
+    });
+  });
+};
+
+const recalculateWaitingPositionsAndNotify = async (salonId, io) => {
+  const { salon, waitingQueue, chairs } = await getSalonSnapshot(salonId);
+  const activeChairs = chairs.filter((c) => c.status === "occupied").length;
+  const avgServiceTime = salon?.avgServiceTime || 20;
+  for (let i = 0; i < waitingQueue.length; i += 1) {
+    const newPosition = i + 1;
+    const estimatedWait =
+      activeChairs <= 0
+        ? newPosition * avgServiceTime
+        : Math.ceil(newPosition / activeChairs) * avgServiceTime;
+    await prisma.queueEntry.update({
+      where: { id: waitingQueue[i].id },
+      data: { position: newPosition, estimatedWait },
+    });
+    io.to(`customer:${waitingQueue[i].customerId}`).emit("position-changed", {
+      newPosition,
+      estimatedWait,
+    });
+  }
+  await emitQueueAndChairUpdates(io, salonId);
+};
+
+const joinQueue = async ({ customerId, salonId, service, io }) => {
+  const currentActive = await prisma.queueEntry.findFirst({
+    where: {
+      customerId,
+      status: { in: ["waiting", "called", "seated"] },
+    },
+  });
+  if (currentActive) {
+    throw new Error("Customer already has an active queue entry");
+  }
+  const lastWaiting = await prisma.queueEntry.findFirst({
+    where: { salonId, status: "waiting" },
+    orderBy: { position: "desc" },
+  });
+  const position = (lastWaiting?.position || 0) + 1;
+  const estimatedWait = await getEstimatedWait(salonId);
   const entry = await prisma.queueEntry.create({
-    data: { customerId, salonId, service, position, estimatedWait },
-    include: waitingInclude,
+    data: {
+      customerId,
+      salonId,
+      service,
+      position,
+      estimatedWait: estimatedWait + 1,
+      status: "waiting",
+    },
+    include: { customer: { select: { id: true, name: true } } },
   });
-
-  await recalcWaitingPositions(salonId, io);
+  await recalculateWaitingPositionsAndNotify(salonId, io);
   return entry;
 };
 
-export const leaveQueue = async ({ customerId, io }) => {
-  const entry = await prisma.queueEntry.findFirst({
-    where: { customerId, status: QueueStatus.waiting },
-  });
-  if (!entry) throw new Error("Active waiting queue entry not found.");
-
-  await prisma.queueEntry.delete({ where: { id: entry.id } });
-  await recalcWaitingPositions(entry.salonId, io);
-};
-
-export const assignNextToChair = async ({ chairId, barberId, io }) => {
-  const chair = await prisma.chair.findUnique({ where: { id: chairId }, include: { salon: true } });
-  if (!chair) throw new Error("Chair not found.");
-  if (chair.salon.ownerId !== barberId) throw new Error("Not allowed for this salon.");
-
+const assignNextToChair = async ({ chairId, barberSalonId, io }) => {
+  const chair = await prisma.chair.findUnique({ where: { id: chairId } });
+  if (!chair || chair.salonId !== barberSalonId) {
+    throw new Error("Chair not found");
+  }
+  if (chair.currentQueueEntryId) {
+    throw new Error("Chair already occupied");
+  }
   const nextEntry = await prisma.queueEntry.findFirst({
-    where: { salonId: chair.salonId, status: QueueStatus.waiting },
+    where: { salonId: barberSalonId, status: "waiting" },
     orderBy: { position: "asc" },
-    include: { customer: true },
+    include: { customer: true, salon: true },
   });
-  if (!nextEntry) throw new Error("Queue is empty.");
+  if (!nextEntry) throw new Error("Queue is empty");
 
-  const [updatedEntry, updatedChair] = await prisma.$transaction([
-    prisma.queueEntry.update({
+  const chairsBeforeAssign = await prisma.chair.findMany({ where: { salonId: barberSalonId } });
+  const wereAllIdle = chairsBeforeAssign.every((c) => c.status === "idle");
+
+  const result = await prisma.$transaction(async (tx) => {
+    const updatedEntry = await tx.queueEntry.update({
       where: { id: nextEntry.id },
       data: {
-        status: QueueStatus.seated,
+        status: "seated",
         assignedChairId: chairId,
         calledAt: new Date(),
       },
-      include: { customer: true },
-    }),
-    prisma.chair.update({
+      include: { customer: true, salon: true },
+    });
+    const updatedChair = await tx.chair.update({
       where: { id: chairId },
-      data: { status: ChairStatus.occupied, currentQueueEntryId: nextEntry.id },
-    }),
-  ]);
+      data: { status: "occupied", currentQueueEntryId: nextEntry.id },
+      include: {
+        currentEntry: { include: { customer: { select: { id: true, name: true } } } },
+      },
+    });
+    return { updatedEntry, updatedChair };
+  });
 
-  io.to(`customer:${nextEntry.customerId}`).emit("your-turn", {
-    message: "It is your turn now.",
-    chairLabel: chair.label,
-    salonName: chair.salon.name,
+  io.to(`customer:${result.updatedEntry.customerId}`).emit("your-turn", {
+    message: "It is your turn now",
+    chairLabel: result.updatedChair.label,
+    salonName: result.updatedEntry.salon.name,
   });
-  io.to(`barber:${barberId}`).emit("service-timer-started", {
-    chairId: chair.id,
-    suggestedDoneAt: new Date(Date.now() + chair.salon.avgServiceTime * 60 * 1000),
-  });
-  io.to(`salon:${chair.salonId}`).emit("chair-updated", {
-    chairId: chair.id,
-    status: updatedChair.status,
+  io.to(`salon:${barberSalonId}`).emit("chair-updated", {
+    chairId: chairId,
+    status: "occupied",
     currentCustomer: {
-      id: updatedEntry.customerId,
-      name: updatedEntry.customer.name,
-      service: updatedEntry.service,
+      id: result.updatedEntry.customer.id,
+      name: result.updatedEntry.customer.name,
     },
   });
 
-  await recalcWaitingPositions(chair.salonId, io);
-  await cacheChairs(
-    chair.salonId,
-    await prisma.chair.findMany({ where: { salonId: chair.salonId } }),
-  );
-  return { chair: updatedChair, entry: updatedEntry };
+  if (wereAllIdle) {
+    const salon = await prisma.salon.findUnique({ where: { id: barberSalonId } });
+    setTimeout(() => {
+      io.to(`barber:${salon.ownerId}`).emit("chair-service-suggestion", {
+        chairId,
+        message: `Avg service time elapsed for chair ${result.updatedChair.label}`,
+      });
+    }, (salon.avgServiceTime || 20) * 60 * 1000);
+  }
+
+  await recalculateWaitingPositionsAndNotify(barberSalonId, io);
+  return result;
 };
 
-export const markChairDone = async ({ chairId, barberId, io }) => {
+const markChairDone = async ({ chairId, barberSalonId, io }) => {
   const chair = await prisma.chair.findUnique({
     where: { id: chairId },
-    include: { salon: true, currentEntry: true },
+    include: { currentEntry: true },
   });
-  if (!chair) throw new Error("Chair not found.");
-  if (chair.salon.ownerId !== barberId) throw new Error("Not allowed.");
-  if (!chair.currentEntry) throw new Error("No active customer on chair.");
-
-  await prisma.$transaction([
-    prisma.queueEntry.update({
-      where: { id: chair.currentEntry.id },
-      data: { status: QueueStatus.done, servedAt: new Date() },
-    }),
-    prisma.chair.update({
+  if (!chair || chair.salonId !== barberSalonId) throw new Error("Chair not found");
+  if (!chair.currentQueueEntryId) throw new Error("No active queue entry on chair");
+  await prisma.$transaction(async (tx) => {
+    await tx.queueEntry.update({
+      where: { id: chair.currentQueueEntryId },
+      data: { status: "done", servedAt: new Date() },
+    });
+    await tx.chair.update({
       where: { id: chairId },
-      data: { status: ChairStatus.done, currentQueueEntryId: null },
-    }),
-  ]);
-
-  io.to(`salon:${chair.salonId}`).emit("chair-updated", {
-    chairId: chair.id,
-    status: ChairStatus.done,
-    currentCustomer: null,
+      data: { status: "done", currentQueueEntryId: null },
+    });
   });
-  await recalcWaitingPositions(chair.salonId, io);
+  await emitQueueAndChairUpdates(io, barberSalonId);
 };
 
-export const setChairIdle = async ({ chairId, barberId, io }) => {
-  const chair = await prisma.chair.findUnique({ where: { id: chairId }, include: { salon: true } });
-  if (!chair) throw new Error("Chair not found.");
-  if (chair.salon.ownerId !== barberId) throw new Error("Not allowed.");
-
-  const updated = await prisma.chair.update({
-    where: { id: chairId },
-    data: { status: ChairStatus.idle },
-  });
-  io.to(`salon:${chair.salonId}`).emit("chair-updated", {
-    chairId: chair.id,
-    status: updated.status,
-    currentCustomer: null,
-  });
-  await cacheChairs(
-    chair.salonId,
-    await prisma.chair.findMany({ where: { salonId: chair.salonId } }),
-  );
-  return updated;
+const markChairIdle = async ({ chairId, barberSalonId, io }) => {
+  const chair = await prisma.chair.findUnique({ where: { id: chairId } });
+  if (!chair || chair.salonId !== barberSalonId) throw new Error("Chair not found");
+  await prisma.chair.update({ where: { id: chairId }, data: { status: "idle" } });
+  await emitQueueAndChairUpdates(io, barberSalonId);
 };
 
-export const markNoShow = async ({ entryId, barberId, io }) => {
-  const entry = await prisma.queueEntry.findUnique({
-    where: { id: entryId },
-    include: { salon: true },
-  });
-  if (!entry) throw new Error("Queue entry not found.");
-  if (entry.salon.ownerId !== barberId) throw new Error("Not allowed.");
-
+const markNoShow = async ({ entryId, barberSalonId, io }) => {
+  const entry = await prisma.queueEntry.findUnique({ where: { id: entryId } });
+  if (!entry || entry.salonId !== barberSalonId) throw new Error("Queue entry not found");
   await prisma.queueEntry.update({
     where: { id: entryId },
-    data: { status: QueueStatus.no_show },
+    data: { status: "no_show" },
   });
-
   io.to(`customer:${entry.customerId}`).emit("kicked-from-queue", {
     reason: "Marked as no-show by barber",
   });
-  await recalcWaitingPositions(entry.salonId, io);
+  await recalculateWaitingPositionsAndNotify(barberSalonId, io);
+};
+
+const leaveQueue = async ({ customerId, io }) => {
+  const entry = await prisma.queueEntry.findFirst({
+    where: {
+      customerId,
+      status: { in: ["waiting", "called"] },
+    },
+  });
+  if (!entry) throw new Error("No active queue entry found");
+  await prisma.queueEntry.delete({ where: { id: entry.id } });
+  await recalculateWaitingPositionsAndNotify(entry.salonId, io);
+};
+
+const hydrateRedisFromPostgres = async () => {
+  const salons = await prisma.salon.findMany({
+    include: {
+      chairs: {
+        include: {
+          currentEntry: {
+            include: { customer: { select: { id: true, name: true } } },
+          },
+        },
+      },
+      queueEntries: {
+        where: { status: "waiting" },
+        orderBy: { position: "asc" },
+        include: { customer: { select: { id: true, name: true } } },
+      },
+    },
+  });
+  await Promise.all(
+    salons.map((salon) =>
+      Promise.all([
+        syncSalonQueueToRedis(salon.id, salon.queueEntries),
+        syncSalonChairsToRedis(salon.id, salon.chairs),
+      ])
+    )
+  );
+};
+
+module.exports = {
+  getEstimatedWait,
+  emitQueueAndChairUpdates,
+  recalculateWaitingPositionsAndNotify,
+  joinQueue,
+  assignNextToChair,
+  markChairDone,
+  markChairIdle,
+  markNoShow,
+  leaveQueue,
+  hydrateRedisFromPostgres,
 };

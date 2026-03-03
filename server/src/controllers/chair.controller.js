@@ -1,62 +1,52 @@
-import { prisma } from "../lib/prisma.js";
-import { cacheChairs } from "../services/redis.service.js";
+const prisma = require("../services/prisma.service");
 
-const getSalonForBarber = async (barberId) => {
-  return prisma.salon.findUnique({ where: { ownerId: barberId } });
-};
-
-export const getChairs = async (req, res) => {
+const getChairs = async (req, res) => {
   try {
-    const salon = await getSalonForBarber(req.user.userId);
-    if (!salon) return res.status(404).json({ message: "Salon not found." });
     const chairs = await prisma.chair.findMany({
-      where: { salonId: salon.id },
-      include: { currentEntry: { include: { customer: true } } },
+      where: { salonId: req.user.salonId },
+      include: {
+        currentEntry: {
+          include: { customer: { select: { id: true, name: true } } },
+        },
+      },
       orderBy: { createdAt: "asc" },
     });
     return res.json(chairs);
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to fetch chairs", error: error.message });
   }
 };
 
-export const createChair = async (req, res) => {
+const createChair = async (req, res) => {
   try {
-    const salon = await getSalonForBarber(req.user.userId);
-    if (!salon) return res.status(404).json({ message: "Salon not found." });
+    const { label } = req.body;
     const chair = await prisma.chair.create({
       data: {
-        salonId: salon.id,
-        label: req.body.label,
+        salonId: req.user.salonId,
+        label,
       },
     });
-    await cacheChairs(salon.id, await prisma.chair.findMany({ where: { salonId: salon.id } }));
-    req.app.get("io").to(`salon:${salon.id}`).emit("chair-updated", {
-      chairId: chair.id,
-      status: chair.status,
-      currentCustomer: null,
-    });
     return res.status(201).json(chair);
-  } catch (err) {
-    return res.status(400).json({ message: err.message });
+  } catch (error) {
+    return res.status(400).json({ message: "Failed to create chair", error: error.message });
   }
 };
 
-export const deleteChair = async (req, res) => {
+const deleteChair = async (req, res) => {
   try {
-    const salon = await getSalonForBarber(req.user.userId);
-    if (!salon) return res.status(404).json({ message: "Salon not found." });
-    const chair = await prisma.chair.findUnique({ where: { id: req.params.id } });
-    if (!chair || chair.salonId !== salon.id) {
-      return res.status(404).json({ message: "Chair not found." });
+    const { id } = req.params;
+    const chair = await prisma.chair.findUnique({ where: { id } });
+    if (!chair || chair.salonId !== req.user.salonId) {
+      return res.status(404).json({ message: "Chair not found" });
     }
     if (chair.currentQueueEntryId) {
-      return res.status(400).json({ message: "Cannot delete occupied chair." });
+      return res.status(400).json({ message: "Cannot delete occupied chair" });
     }
-    await prisma.chair.delete({ where: { id: chair.id } });
-    await cacheChairs(salon.id, await prisma.chair.findMany({ where: { salonId: salon.id } }));
-    return res.json({ message: "Chair deleted." });
-  } catch (err) {
-    return res.status(400).json({ message: err.message });
+    await prisma.chair.delete({ where: { id } });
+    return res.json({ message: "Chair deleted" });
+  } catch (error) {
+    return res.status(400).json({ message: "Failed to delete chair", error: error.message });
   }
 };
+
+module.exports = { getChairs, createChair, deleteChair };

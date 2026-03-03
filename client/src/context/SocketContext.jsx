@@ -4,32 +4,30 @@ import { useAuth } from "./AuthContext";
 
 const SocketContext = createContext(null);
 
-export function SocketProvider({ children }) {
+export const SocketProvider = ({ children }) => {
   const { user, token } = useAuth();
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    if (!token || !user) return undefined;
+    if (!token) {
+      if (socket) socket.disconnect();
+      setSocket(null);
+      return;
+    }
     const s = io(import.meta.env.VITE_SOCKET_URL, {
-      transports: ["websocket"],
       auth: { token },
+      transports: ["websocket"],
     });
-
-    s.on("connect", () => {
-      if (user.role === "customer") {
-        s.emit("customer-join", { customerId: user.id });
-      }
-      if (user.role === "barber" && user.salonId) {
-        s.emit("barber-join", { salonId: user.salonId, barberId: user.id });
-      }
-    });
-
     setSocket(s);
+    s.on("connect", () => {
+      if (user?.role === "customer") s.emit("customer-join", { customerId: user.id });
+      if (user?.role === "barber") s.emit("barber-join", { barberId: user.id, salonId: user.salonId });
+    });
     return () => s.disconnect();
-  }, [token, user]);
+  }, [token, user?.id, user?.role]);
 
   const value = useMemo(() => ({ socket }), [socket]);
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
-}
+};
 
 export const useSocketContext = () => useContext(SocketContext);

@@ -1,0 +1,38 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
+
+const BarberLogin = () => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const { user } = await login(email, password);
+      if (user.role !== "barber" && user.role !== "admin") {
+        toast.error("This login is for barber/admin users.");
+        return;
+      }
+      navigate(user.role === "admin" ? "/admin" : "/barber/dashboard");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Login failed");
+    }
+  };
+
+  return (
+    <main className="max-w-md mx-auto py-10 px-4">
+      <h1 className="text-2xl font-bold">Barber Login</h1>
+      <form onSubmit={onSubmit} className="bg-white border rounded-xl p-5 mt-4 space-y-3">
+        <input className="w-full border rounded px-3 py-2" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <input className="w-full border rounded px-3 py-2" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <button className="w-full bg-brand text-white rounded px-3 py-2">Login</button>
+      </form>
+    </main>
+  );
+};
+
+export default BarberLogin;

@@ -3,59 +3,51 @@ import api from "../utils/api";
 
 const AuthContext = createContext(null);
 
-const storedToken = localStorage.getItem("nextcut_token");
-const storedUser = localStorage.getItem("nextcut_user");
+export const AuthProvider = ({ children }) => {
+  const [token, setToken] = useState(localStorage.getItem("nextcut_token"));
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem("nextcut_user");
+    return stored ? JSON.parse(stored) : null;
+  });
 
-export function AuthProvider({ children }) {
-  const [token, setToken] = useState(storedToken || "");
-  const [user, setUser] = useState(storedUser ? JSON.parse(storedUser) : null);
-
-  const setAuth = (payload) => {
-    setToken(payload.token);
-    setUser(payload.user);
-    localStorage.setItem("nextcut_token", payload.token);
-    localStorage.setItem("nextcut_user", JSON.stringify(payload.user));
+  const saveSession = (nextToken, nextUser) => {
+    localStorage.setItem("nextcut_token", nextToken);
+    localStorage.setItem("nextcut_user", JSON.stringify(nextUser));
+    setToken(nextToken);
+    setUser(nextUser);
   };
 
   const logout = () => {
-    setToken("");
-    setUser(null);
     localStorage.removeItem("nextcut_token");
     localStorage.removeItem("nextcut_user");
-  };
-
-  const registerCustomer = async (data) => {
-    const res = await api.post("/auth/register", { ...data, role: "customer" });
-    setAuth(res.data);
-    return res.data;
+    setToken(null);
+    setUser(null);
   };
 
   const login = async (email, password) => {
-    const res = await api.post("/auth/login", { email, password });
-    setAuth(res.data);
-    return res.data;
+    const { data } = await api.post("/auth/login", { email, password });
+    saveSession(data.token, data.user);
+    return data;
   };
 
-  const barberRegister = async (tokenParam, data) => {
-    const res = await api.post(`/auth/barber-register/${tokenParam}`, data);
-    setAuth(res.data);
-    return res.data;
+  const registerCustomer = async (payload) => {
+    const { data } = await api.post("/auth/register", { ...payload, role: "customer" });
+    saveSession(data.token, data.user);
+    return data;
+  };
+
+  const registerBarberWithToken = async (tokenValue, payload) => {
+    const { data } = await api.post(`/auth/barber-register/${tokenValue}`, payload);
+    saveSession(data.token, data.user);
+    return data;
   };
 
   const value = useMemo(
-    () => ({
-      token,
-      user,
-      isAuthed: Boolean(token && user),
-      registerCustomer,
-      login,
-      barberRegister,
-      logout,
-    }),
-    [token, user],
+    () => ({ token, user, login, logout, registerCustomer, registerBarberWithToken }),
+    [token, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+};
 
 export const useAuth = () => useContext(AuthContext);

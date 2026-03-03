@@ -1,17 +1,18 @@
-import { Router } from "express";
-import {
-  barberRegister,
+const express = require("express");
+const {
+  registerCustomer,
   login,
-  register,
+  barberRegisterWithToken,
   sendInvite,
-} from "../controllers/auth.controller.js";
-import { authLimiter } from "../middleware/rateLimit.middleware.js";
+} = require("../controllers/auth.controller");
+const authMiddleware = require("../middleware/auth.middleware");
+const { isAdmin } = require("../middleware/role.middleware");
 
-const router = Router();
+const router = express.Router();
 
-router.post("/register", authLimiter, register);
-router.post("/login", authLimiter, login);
-router.post("/barber-register/:token", authLimiter, barberRegister);
-router.post("/admin/send-invite", sendInvite);
+router.post("/register", registerCustomer);
+router.post("/login", login);
+router.post("/barber-register/:token", barberRegisterWithToken);
+router.post("/admin/send-invite", authMiddleware, isAdmin, sendInvite);
 
-export default router;
+module.exports = router;

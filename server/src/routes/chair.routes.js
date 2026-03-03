@@ -1,13 +1,12 @@
-import { Router } from "express";
-import { createChair, deleteChair, getChairs } from "../controllers/chair.controller.js";
-import { authMiddleware } from "../middleware/auth.middleware.js";
-import { isBarber } from "../middleware/role.middleware.js";
+const express = require("express");
+const { getChairs, createChair, deleteChair } = require("../controllers/chair.controller");
+const authMiddleware = require("../middleware/auth.middleware");
+const { isBarber } = require("../middleware/role.middleware");
 
-const router = Router();
+const router = express.Router();
 
-router.use(authMiddleware, isBarber);
-router.get("/chairs", getChairs);
-router.post("/chairs", createChair);
-router.delete("/chairs/:id", deleteChair);
+router.get("/", authMiddleware, isBarber, getChairs);
+router.post("/", authMiddleware, isBarber, createChair);
+router.delete("/:id", authMiddleware, isBarber, deleteChair);
 
-export default router;
+module.exports = router;

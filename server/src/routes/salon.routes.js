@@ -1,10 +1,10 @@
-import { Router } from "express";
-import { getSalonById, listSalons } from "../controllers/salon.controller.js";
-import { authMiddleware } from "../middleware/auth.middleware.js";
+const express = require("express");
+const { getNearbySalons, getSalonDetail } = require("../controllers/salon.controller");
+const authMiddleware = require("../middleware/auth.middleware");
 
-const router = Router();
+const router = express.Router();
 
-router.get("/", authMiddleware, listSalons);
-router.get("/:id", authMiddleware, getSalonById);
+router.get("/", authMiddleware, getNearbySalons);
+router.get("/:id", authMiddleware, getSalonDetail);
 
-export default router;
+module.exports = router;

@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -10,12 +10,14 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendBarberInviteEmail = async ({ email, token }) => {
+const sendBarberInviteEmail = async ({ email, token, salonName }) => {
   const link = `${process.env.CLIENT_URL}/barber-register?token=${token}`;
   await transporter.sendMail({
-    from: process.env.SMTP_USER,
+    from: `NextCut <${process.env.SMTP_USER}>`,
     to: email,
-    subject: "NextCut barber invite",
-    html: `<p>You were invited to join NextCut as a barber.</p><p><a href="${link}">Complete registration</a></p>`,
+    subject: `NextCut barber invite for ${salonName}`,
+    html: `<p>You were invited to join <b>${salonName}</b> on NextCut.</p><p>Complete signup: <a href="${link}">${link}</a></p>`,
   });
 };
+
+module.exports = { sendBarberInviteEmail };

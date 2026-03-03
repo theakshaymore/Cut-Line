@@ -1,10 +1,15 @@
-export const requireRole = (...roles) => (req, res, next) => {
-  if (!req.user || !roles.includes(req.user.role)) {
+const requireRole = (...roles) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  if (!roles.includes(req.user.role)) {
     return res.status(403).json({ message: "Forbidden" });
   }
   return next();
 };
 
-export const isBarber = requireRole("barber");
-export const isCustomer = requireRole("customer");
-export const isAdmin = requireRole("admin");
+const isCustomer = requireRole("customer");
+const isBarber = requireRole("barber");
+const isAdmin = requireRole("admin");
+
+module.exports = { requireRole, isCustomer, isBarber, isAdmin };

@@ -1,17 +1,12 @@
-import { Router } from "express";
-import {
-  getMyQueueStatus,
-  joinSalonQueue,
-  leaveSalonQueue,
-} from "../controllers/queue.controller.js";
-import { authMiddleware } from "../middleware/auth.middleware.js";
-import { isCustomer } from "../middleware/role.middleware.js";
+const express = require("express");
+const { join, myStatus, leave } = require("../controllers/queue.controller");
+const authMiddleware = require("../middleware/auth.middleware");
+const { isCustomer } = require("../middleware/role.middleware");
 
-const router = Router();
+const router = express.Router();
 
-router.use(authMiddleware, isCustomer);
-router.post("/join", joinSalonQueue);
-router.get("/my-status", getMyQueueStatus);
-router.delete("/leave", leaveSalonQueue);
+router.post("/join", authMiddleware, isCustomer, join);
+router.get("/my-status", authMiddleware, isCustomer, myStatus);
+router.delete("/leave", authMiddleware, isCustomer, leave);
 
-export default router;
+module.exports = router;

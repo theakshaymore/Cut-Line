@@ -1,21 +1,20 @@
-import { Router } from "express";
-import {
-  assignChair,
+const express = require("express");
+const {
   getBarberQueue,
-  markDone,
-  markEntryNoShow,
-  markIdle,
-} from "../controllers/barber.controller.js";
-import { authMiddleware } from "../middleware/auth.middleware.js";
-import { isBarber } from "../middleware/role.middleware.js";
+  assignChair,
+  chairDone,
+  chairIdle,
+  queueNoShow,
+} = require("../controllers/barber.controller");
+const authMiddleware = require("../middleware/auth.middleware");
+const { isBarber } = require("../middleware/role.middleware");
 
-const router = Router();
+const router = express.Router();
 
-router.use(authMiddleware, isBarber);
-router.get("/queue", getBarberQueue);
-router.patch("/chair/:chairId/assign", assignChair);
-router.patch("/chair/:chairId/done", markDone);
-router.patch("/chair/:chairId/idle", markIdle);
-router.patch("/queue/:entryId/noshow", markEntryNoShow);
+router.get("/queue", authMiddleware, isBarber, getBarberQueue);
+router.patch("/chair/:chairId/assign", authMiddleware, isBarber, assignChair);
+router.patch("/chair/:chairId/done", authMiddleware, isBarber, chairDone);
+router.patch("/chair/:chairId/idle", authMiddleware, isBarber, chairIdle);
+router.patch("/queue/:entryId/noshow", authMiddleware, isBarber, queueNoShow);
 
-export default router;
+module.exports = router;
