@@ -6,6 +6,7 @@ It is intended to let another developer continue work immediately with minimal c
 ## 1. What was requested
 
 A complete production-ready full-stack app named **NextCut** was requested with:
+
 - Customer and Barber roles
 - Queue management and live updates
 - Backend: Node/Express, Prisma/PostgreSQL, Redis, Socket.IO, JWT, Nodemailer
@@ -18,12 +19,15 @@ The implementation was done from an almost empty repo (only `.git` existed initi
 ## 2. What was created (high-level)
 
 ### Root
+
 - `.gitignore`
 - `README.md`
 - `summary.md` (this file)
 
 ### Server
+
 Created complete backend scaffold and implementation under `server/`:
+
 - `package.json`
 - `.env.example`
 - Prisma schema + migration:
@@ -59,7 +63,9 @@ Created complete backend scaffold and implementation under `server/`:
   - `calcWaitTime.js`
 
 ### Client
+
 Created complete frontend scaffold and implementation under `client/`:
+
 - `package.json`
 - `.env.example`
 - Vite/Tailwind setup:
@@ -101,6 +107,7 @@ Created complete frontend scaffold and implementation under `client/`:
 ## 3. Backend behavior implemented
 
 ### Auth
+
 - Customer register (`POST /api/auth/register`)
 - Login (`POST /api/auth/login`)
 - Invite-only barber register (`POST /api/auth/barber-register/:token`)
@@ -108,17 +115,20 @@ Created complete frontend scaffold and implementation under `client/`:
 - Password hashing with bcrypt, JWT issuance with role + salonId
 
 ### Salons
+
 - Nearby salons by geolocation and radius (`GET /api/salons`)
 - Salon detail (`GET /api/salons/:id`)
 - Returns queue/chair-derived data including estimated wait
 
 ### Customer queue
+
 - Join queue (`POST /api/queue/join`)
 - My status (`GET /api/queue/my-status`)
 - Leave queue (`DELETE /api/queue/leave`)
 - One active queue check + short Redis join throttle key
 
 ### Barber operations
+
 - Get active queue (`GET /api/barber/queue`)
 - Assign next to chair (`PATCH /api/barber/chair/:chairId/assign`)
 - Mark chair done (`PATCH /api/barber/chair/:chairId/done`)
@@ -127,6 +137,7 @@ Created complete frontend scaffold and implementation under `client/`:
 - Chair CRUD (`GET/POST/DELETE /api/barber/chairs`)
 
 ### Queue business logic
+
 - Wait time calculation uses occupied chairs + avg service time
 - Position re-numbering and estimated wait re-calc on queue changes
 - Prisma transaction for assign and done flows
@@ -134,6 +145,7 @@ Created complete frontend scaffold and implementation under `client/`:
 - “Service elapsed” suggestion timer emitted to barber room when assign starts from all-idle state
 
 ### Redis layer
+
 - Keys used:
   - `salon:{salonId}:queue`
   - `salon:{salonId}:chairs`
@@ -143,6 +155,7 @@ Created complete frontend scaffold and implementation under `client/`:
 - Rehydrate queues/chairs from Postgres on server start
 
 ### Socket events
+
 - Client -> server:
   - `join-salon-room`
   - `leave-salon-room`
@@ -209,6 +222,7 @@ Created complete frontend scaffold and implementation under `client/`:
 ## 8. Maintenance rule for this file
 
 When future code changes are made, update this `summary.md` in the same change set with:
+
 - What changed
 - Why it changed
 - Files touched
@@ -217,6 +231,7 @@ When future code changes are made, update this `summary.md` in the same change s
 ## 9. Latest updates (this change set)
 
 ### Added local infra orchestration
+
 - Added root Docker Compose file for PostgreSQL + Redis:
   - `docker-compose.yml`
 - Services included:
@@ -225,6 +240,7 @@ When future code changes are made, update this `summary.md` in the same change s
 - Added persistent named volumes and health checks.
 
 ### Added dark theme with toggle
+
 - Enabled Tailwind class-based dark mode (`darkMode: "class"`).
 - Added theme context with persistence:
   - `client/src/context/ThemeContext.jsx`
@@ -252,14 +268,17 @@ When future code changes are made, update this `summary.md` in the same change s
   - `client/src/pages/AdminPanel.jsx`
 
 ### Docs updates
+
 - Updated `README.md` with Docker Compose startup/stop instructions.
 - Added theme section documenting dark/light toggle behavior.
 
 ### Typography update
+
 - Added global `Inter` font across the website via Google Fonts import in:
   - `client/src/index.css`
 
 ### Latest UI access update
+
 - Replaced global font with `Goudy Bookletter 1911` in:
   - `client/src/index.css`
 - Reverted global font back to `Inter` in:
@@ -279,6 +298,7 @@ When future code changes are made, update this `summary.md` in the same change s
   - file: `client/src/pages/CustomerLogin.jsx`
 
 ### Latest auth policy update
+
 - Added persisted app-level setting to control barber invite requirement:
   - Prisma model: `AppSetting` (singleton row, default `requireBarberInvite=false`)
   - Files:
@@ -305,6 +325,7 @@ When future code changes are made, update this `summary.md` in the same change s
     - `client/src/pages/AdminPanel.jsx`
 
 ### Latest media + UI enhancement update
+
 - Added ImageKit integration for shop images:
   - New backend ImageKit auth service:
     - `server/src/services/imagekit.service.js`
@@ -352,6 +373,7 @@ When future code changes are made, update this `summary.md` in the same change s
     - `client/src/pages/AdminPanel.jsx`
 
 ### Latest navigation + customer/admin UX update
+
 - Added breadcrumb navigation across pages:
   - `client/src/components/Breadcrumbs.jsx`
   - wired in `client/src/App.jsx`
@@ -382,3 +404,14 @@ When future code changes are made, update this `summary.md` in the same change s
     - `server/src/controllers/auth.controller.js`
     - `server/src/routes/auth.routes.js`
     - `client/src/pages/AdminPanel.jsx`
+
+### Documentation sync update
+- Updated `README.md` API and feature sections to match current codebase:
+  - ImageKit auth endpoint
+  - optional barber registration route (`/barber-register`)
+  - admin settings/users overview endpoints
+  - barber salon photo endpoints
+  - customer queue UX notes and local env notes
+- Trimmed `README.md` to repository/project information only:
+  - removed run/setup/how-to-execute command sections
+  - retained architecture, features, API/event surface, and config references
