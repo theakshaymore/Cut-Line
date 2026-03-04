@@ -1,11 +1,11 @@
-# NextCut
+# CutLine
 
-NextCut is a full-stack digital salon queue management system with two roles:
+CutLine is a full-stack digital salon queue management system with two roles:
 
 - Customer: discover nearby salons, join queue remotely, track live position
 - Barber: manage chairs, assign next customer, mark done/no-show in real-time
 
-![NextCut Screenshot](./ss1.png)
+![CutLine Screenshot](./ss1.png)
 
 ## Tech Stack
 

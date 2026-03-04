@@ -10,7 +10,7 @@ const Landing = () => {
             <p className="uppercase tracking-[0.2em] text-xs text-cyan-100">
               Smart Queueing
             </p>
-            <h1 className="text-4xl md:text-5xl font-black mt-2">NextCut</h1>
+            <h1 className="text-4xl md:text-5xl font-black mt-2">CutLine</h1>
             <p className="mt-3 text-cyan-50 max-w-xl">
               A live salon queue platform for customers and barbers. Track wait
               times, manage chairs, and keep shop flow smooth.
