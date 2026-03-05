@@ -10,7 +10,6 @@ import BarberLogin from "./pages/BarberLogin";
 import BarberRegister from "./pages/BarberRegister";
 import SalonList from "./pages/SalonList";
 import SalonDetail from "./pages/SalonDetail";
-import MyQueue from "./pages/MyQueue";
 import BarberDashboard from "./pages/BarberDashboard";
 import AdminPanel from "./pages/AdminPanel";
 import { useAuth } from "./context/AuthContext";
@@ -76,14 +75,6 @@ const App = () => {
           element={
             <Protected roles={["customer"]}>
               <SalonDetail />
-            </Protected>
-          }
-        />
-        <Route
-          path="/my-queue"
-          element={
-            <Protected roles={["customer"]}>
-              <MyQueue />
             </Protected>
           }
         />

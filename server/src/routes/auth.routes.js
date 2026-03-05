@@ -1,5 +1,5 @@
-const express = require("express");
-const {
+import express from "express";
+import {
   registerCustomer,
   login,
   barberRegisterWithToken,
@@ -9,9 +9,13 @@ const {
   updateAdminSettings,
   getImageUploadAuth,
   getAdminUsersOverview,
-} = require("../controllers/auth.controller");
-const authMiddleware = require("../middleware/auth.middleware");
-const { isAdmin } = require("../middleware/role.middleware");
+  banUser,
+  deleteUser,
+  setSalonListing,
+  deleteSalon,
+} from "../controllers/auth.controller.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+import { isAdmin } from "../middleware/role.middleware.js";
 
 const router = express.Router();
 
@@ -25,5 +29,9 @@ router.post("/admin/send-invite", authMiddleware, isAdmin, sendInvite);
 router.get("/admin/settings", authMiddleware, isAdmin, getAdminSettings);
 router.patch("/admin/settings", authMiddleware, isAdmin, updateAdminSettings);
 router.get("/admin/users-overview", authMiddleware, isAdmin, getAdminUsersOverview);
+router.patch("/admin/users/:id/ban", authMiddleware, isAdmin, banUser);
+router.delete("/admin/users/:id", authMiddleware, isAdmin, deleteUser);
+router.patch("/admin/salons/:id/listing", authMiddleware, isAdmin, setSalonListing);
+router.delete("/admin/salons/:id", authMiddleware, isAdmin, deleteSalon);
 
-module.exports = router;
+export default router;

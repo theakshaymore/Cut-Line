@@ -1,0 +1,9 @@
+-- AlterTable
+ALTER TABLE "User"
+ADD COLUMN "isBanned" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "bannedAt" TIMESTAMP(3),
+ADD COLUMN "bannedReason" TEXT;
+
+-- AlterTable
+ALTER TABLE "Salon"
+ADD COLUMN "isListed" BOOLEAN NOT NULL DEFAULT true;

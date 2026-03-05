@@ -1,4 +1,4 @@
-const { setCustomerSocket, deleteCustomerSocket } = require("../services/redis.service");
+import { setCustomerSocket, deleteCustomerSocket } from "../services/redis.service.js";
 
 const registerSocketHandlers = (io) => {
   io.on("connection", (socket) => {
@@ -32,4 +32,4 @@ const registerSocketHandlers = (io) => {
   });
 };
 
-module.exports = registerSocketHandlers;
+export default registerSocketHandlers;

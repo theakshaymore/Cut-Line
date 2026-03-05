@@ -1,4 +1,4 @@
-const ImageKit = require("imagekit");
+import ImageKit from "imagekit";
 
 let imagekit = null;
 
@@ -17,4 +17,4 @@ const getImageKitAuthParams = () => {
   return sdk.getAuthenticationParameters();
 };
 
-module.exports = { getImageKitAuthParams };
+export { getImageKitAuthParams };

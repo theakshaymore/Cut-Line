@@ -1,4 +1,4 @@
-const prisma = require("../services/prisma.service");
+import prisma from "../services/prisma.service.js";
 
 const getChairs = async (req, res) => {
   try {
@@ -49,4 +49,4 @@ const deleteChair = async (req, res) => {
   }
 };
 
-module.exports = { getChairs, createChair, deleteChair };
+export { getChairs, createChair, deleteChair };

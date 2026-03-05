@@ -1,5 +1,6 @@
-const jwt = require("jsonwebtoken");
-const prisma = require("../services/prisma.service");
+import jwt from "jsonwebtoken";
+import prisma from "../services/prisma.service.js";
+import { logger } from "../utils/logger.js";
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -16,6 +17,10 @@ const authMiddleware = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({ message: "Invalid token user" });
     }
+    if (user.isBanned) {
+      logger.warn("Blocked banned user from auth middleware", { userId: user.id, requestId: req.requestId });
+      return res.status(403).json({ message: "Your account is banned. Please contact support." });
+    }
     req.user = {
       userId: user.id,
       role: user.role,
@@ -24,8 +29,9 @@ const authMiddleware = async (req, res, next) => {
     };
     return next();
   } catch (error) {
+    logger.error("Auth middleware failed", { requestId: req.requestId, error: error.message, stack: error.stack });
     return res.status(401).json({ message: "Unauthorized", error: error.message });
   }
 };
 
-module.exports = authMiddleware;
+export default authMiddleware;

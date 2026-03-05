@@ -4,4 +4,4 @@ const calcWaitTime = ({ activeChairs, waitingCount, avgServiceTime }) => {
   return Math.ceil(waitingCount / activeChairs) * avgServiceTime;
 };
 
-module.exports = calcWaitTime;
+export default calcWaitTime;

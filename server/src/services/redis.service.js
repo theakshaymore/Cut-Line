@@ -1,4 +1,4 @@
-const Redis = require("ioredis");
+import Redis from "ioredis";
 
 let redis = null;
 let redisEnabled = false;
@@ -63,7 +63,7 @@ const syncSalonChairsToRedis = async (salonId, chairs) => {
   await redis.hset(key, payload);
 };
 
-module.exports = {
+export {
   initRedis,
   getRedis,
   setCustomerSocket,

@@ -2,6 +2,7 @@
   "name": "nextcut-server",
   "version": "1.0.0",
   "description": "NextCut backend API and realtime server",
+  "type": "module",
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon src/index.js",

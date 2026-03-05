@@ -1,6 +1,6 @@
-const prisma = require("../services/prisma.service");
-const { joinQueue, leaveQueue } = require("../services/queue.service");
-const { setJoinRateLimit } = require("../services/redis.service");
+import prisma from "../services/prisma.service.js";
+import { joinQueue, leaveQueue } from "../services/queue.service.js";
+import { setJoinRateLimit } from "../services/redis.service.js";
 
 const join = async (req, res) => {
   try {
@@ -49,4 +49,4 @@ const leave = async (req, res) => {
   }
 };
 
-module.exports = { join, myStatus, leave };
+export { join, myStatus, leave };

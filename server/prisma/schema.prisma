@@ -41,6 +41,9 @@ model User {
   email         String         @unique
   passwordHash  String
   role          Role           @default(customer)
+  isBanned      Boolean        @default(false)
+  bannedAt      DateTime?
+  bannedReason  String?
   fcmToken      String?
   createdAt     DateTime       @default(now())
   salon         Salon?
@@ -53,6 +56,7 @@ model Salon {
   name              String
   address           String
   imageUrl          String?
+  isListed          Boolean      @default(true)
   latitude          Float
   longitude         Float
   ownerId           String       @unique

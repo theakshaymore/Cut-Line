@@ -1,10 +1,10 @@
-const prisma = require("../services/prisma.service");
-const {
+import prisma from "../services/prisma.service.js";
+import {
   assignNextToChair,
   markChairDone,
   markChairIdle,
   markNoShow,
-} = require("../services/queue.service");
+} from "../services/queue.service.js";
 
 const getBarberQueue = async (req, res) => {
   try {
@@ -106,7 +106,7 @@ const updateSalonPhoto = async (req, res) => {
   }
 };
 
-module.exports = {
+export {
   getBarberQueue,
   assignChair,
   chairDone,

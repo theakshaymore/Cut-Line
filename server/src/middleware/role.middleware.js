@@ -12,4 +12,4 @@ const isCustomer = requireRole("customer");
 const isBarber = requireRole("barber");
 const isAdmin = requireRole("admin");
 
-module.exports = { requireRole, isCustomer, isBarber, isAdmin };
+export { requireRole, isCustomer, isBarber, isAdmin };

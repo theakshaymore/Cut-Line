@@ -415,3 +415,45 @@ When future code changes are made, update this `summary.md` in the same change s
 - Trimmed `README.md` to repository/project information only:
   - removed run/setup/how-to-execute command sections
   - retained architecture, features, API/event surface, and config references
+
+### Latest backend modernization + admin governance update
+- Migrated backend from CommonJS to ESM (`import/export`):
+  - Added `"type": "module"` in `server/package.json`
+  - Converted all files in `server/src/**` to ESM import style.
+- Added structured logging/tracing support:
+  - new logger utility: `server/src/utils/logger.js`
+  - request ID + request/response logs middleware:
+    - `server/src/middleware/requestLogger.middleware.js`
+  - startup/unhandled crash logging in `server/src/index.js`
+  - express error middleware in `server/src/index.js`
+- Added moderation fields for admin governance:
+  - `User.isBanned`, `User.bannedAt`, `User.bannedReason`
+  - `Salon.isListed` (controls storefront visibility)
+  - Prisma migration:
+    - `server/prisma/migrations/20260305110000_add_ban_and_listing/migration.sql`
+- Auth/login ban enforcement:
+  - blocked users now get explicit banned error on login and auth middleware checks.
+- Added admin governance APIs:
+  - `PATCH /api/auth/admin/users/:id/ban`
+  - `DELETE /api/auth/admin/users/:id`
+  - `PATCH /api/auth/admin/salons/:id/listing` (delist/relist)
+  - `DELETE /api/auth/admin/salons/:id`
+  - expanded `GET /api/auth/admin/users-overview` with customers, barbers, salons data
+- Updated admin panel UI:
+  - accordion sections for Users and Stores
+  - ban/unban + delete actions for users
+  - delist/relist + delete actions for stores
+  - file: `client/src/pages/AdminPanel.jsx`
+- Queue UX unified on customer homepage:
+  - removed redundant `/my-queue` route usage
+  - kept "My Waiting List" card on `/salons`
+  - added optional queue details modal with leave action
+  - file updates:
+    - `client/src/App.jsx`
+    - `client/src/pages/SalonList.jsx`
+    - `client/src/pages/SalonDetail.jsx`
+- Tightened salon API payload and removed placeholder rating:
+  - removed static rating field
+  - restricted selected fields for nearby salon API
+  - delisted salons now hidden from nearby list and detail response
+  - file: `server/src/controllers/salon.controller.js`

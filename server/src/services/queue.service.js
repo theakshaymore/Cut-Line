@@ -1,9 +1,9 @@
-const prisma = require("./prisma.service");
-const calcWaitTime = require("../utils/calcWaitTime");
-const {
+import prisma from "./prisma.service.js";
+import calcWaitTime from "../utils/calcWaitTime.js";
+import {
   syncSalonQueueToRedis,
   syncSalonChairsToRedis,
-} = require("./redis.service");
+} from "./redis.service.js";
 
 const getSalonSnapshot = async (salonId) => {
   const [salon, waitingQueue, chairs] = await Promise.all([
@@ -249,7 +249,7 @@ const hydrateRedisFromPostgres = async () => {
   );
 };
 
-module.exports = {
+export {
   getEstimatedWait,
   emitQueueAndChairUpdates,
   recalculateWaitingPositionsAndNotify,

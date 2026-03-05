@@ -1,9 +1,10 @@
-const bcrypt = require("bcrypt");
-const { v4: uuidv4 } = require("uuid");
-const prisma = require("../services/prisma.service");
-const generateToken = require("../utils/generateToken");
-const { sendBarberInviteEmail } = require("../services/mail.service");
-const { getImageKitAuthParams } = require("../services/imagekit.service");
+import bcrypt from "bcrypt";
+import { v4 as uuidv4 } from "uuid";
+import prisma from "../services/prisma.service.js";
+import generateToken from "../utils/generateToken.js";
+import { sendBarberInviteEmail } from "../services/mail.service.js";
+import { getImageKitAuthParams } from "../services/imagekit.service.js";
+import { logger } from "../utils/logger.js";
 
 const getOrCreateAppSetting = async () => {
   return prisma.appSetting.upsert({
@@ -55,6 +56,9 @@ const login = async (req, res) => {
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
+    if (user.isBanned) {
+      return res.status(403).json({ message: "Your account is banned. Please contact support." });
+    }
     const token = generateToken({
       userId: user.id,
       role: user.role,
@@ -62,6 +66,7 @@ const login = async (req, res) => {
     });
     return res.json({ token, user: sanitizeUser(user) });
   } catch (error) {
+    logger.error("Login failed", { requestId: req.requestId, error: error.message, stack: error.stack });
     return res.status(500).json({ message: "Login failed", error: error.message });
   }
 };
@@ -195,14 +200,20 @@ const getImageUploadAuth = async (_req, res) => {
 
 const getAdminUsersOverview = async (_req, res) => {
   try {
-    const users = await prisma.user.findMany({
-      include: {
-        salon: {
-          select: { id: true, name: true, address: true, imageUrl: true, createdAt: true },
+    const [users, salons] = await Promise.all([
+      prisma.user.findMany({
+        include: {
+          salon: {
+            select: { id: true, name: true, address: true, imageUrl: true, isListed: true, createdAt: true },
+          },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.salon.findMany({
+        select: { id: true, name: true, address: true, isListed: true, imageUrl: true, ownerId: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
     const customers = users
       .filter((u) => u.role === "customer")
@@ -211,6 +222,7 @@ const getAdminUsersOverview = async (_req, res) => {
         name: u.name,
         email: u.email,
         phone: u.phone,
+        isBanned: u.isBanned,
         createdAt: u.createdAt,
       }));
 
@@ -221,17 +233,106 @@ const getAdminUsersOverview = async (_req, res) => {
         name: u.name,
         email: u.email,
         phone: u.phone,
+        isBanned: u.isBanned,
         createdAt: u.createdAt,
         salon: u.salon,
       }));
 
-    return res.json({ customers, barbers });
+    return res.json({ customers, barbers, salons });
   } catch (error) {
     return res.status(500).json({ message: "Failed to fetch admin users overview", error: error.message });
   }
 };
 
-module.exports = {
+const banUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isBanned, reason } = req.body;
+    if (typeof isBanned !== "boolean") {
+      return res.status(400).json({ message: "isBanned must be boolean" });
+    }
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        isBanned,
+        bannedAt: isBanned ? new Date() : null,
+        bannedReason: isBanned ? reason || "Banned by admin" : null,
+      },
+    });
+    return res.json({
+      message: isBanned ? "User banned successfully" : "User unbanned successfully",
+      user: sanitizeUser(updated),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to update ban status", error: error.message });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const target = await prisma.user.findUnique({
+      where: { id },
+      include: { salon: true },
+    });
+    if (!target) return res.status(404).json({ message: "User not found" });
+    if (target.role === "admin") {
+      return res.status(400).json({ message: "Deleting admin is not allowed from this endpoint" });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (target.salon?.id) {
+        await tx.queueEntry.deleteMany({ where: { salonId: target.salon.id } });
+        await tx.chair.deleteMany({ where: { salonId: target.salon.id } });
+        await tx.salon.delete({ where: { id: target.salon.id } });
+      }
+      await tx.notification.deleteMany({ where: { userId: id } });
+      await tx.queueEntry.deleteMany({ where: { customerId: id } });
+      await tx.user.delete({ where: { id } });
+    });
+    return res.json({ message: "User deleted successfully" });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to delete user", error: error.message });
+  }
+};
+
+const setSalonListing = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isListed } = req.body;
+    if (typeof isListed !== "boolean") {
+      return res.status(400).json({ message: "isListed must be boolean" });
+    }
+    const salon = await prisma.salon.update({
+      where: { id },
+      data: { isListed },
+    });
+    return res.json({
+      message: isListed ? "Salon relisted successfully" : "Salon delisted successfully",
+      salon,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to update salon listing", error: error.message });
+  }
+};
+
+const deleteSalon = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const salon = await prisma.salon.findUnique({ where: { id } });
+    if (!salon) return res.status(404).json({ message: "Salon not found" });
+    await prisma.$transaction(async (tx) => {
+      await tx.queueEntry.deleteMany({ where: { salonId: id } });
+      await tx.chair.deleteMany({ where: { salonId: id } });
+      await tx.salon.delete({ where: { id } });
+    });
+    return res.json({ message: "Salon deleted successfully" });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to delete salon", error: error.message });
+  }
+};
+
+export {
   registerCustomer,
   login,
   barberRegisterWithToken,
@@ -241,4 +342,8 @@ module.exports = {
   updateAdminSettings,
   getImageUploadAuth,
   getAdminUsersOverview,
+  banUser,
+  deleteUser,
+  setSalonListing,
+  deleteSalon,
 };

@@ -1,5 +1,5 @@
-const express = require("express");
-const {
+import express from "express";
+import {
   getBarberQueue,
   assignChair,
   chairDone,
@@ -7,9 +7,9 @@ const {
   queueNoShow,
   getMySalon,
   updateSalonPhoto,
-} = require("../controllers/barber.controller");
-const authMiddleware = require("../middleware/auth.middleware");
-const { isBarber } = require("../middleware/role.middleware");
+} from "../controllers/barber.controller.js";
+import authMiddleware from "../middleware/auth.middleware.js";
+import { isBarber } from "../middleware/role.middleware.js";
 
 const router = express.Router();
 
@@ -21,4 +21,4 @@ router.patch("/chair/:chairId/done", authMiddleware, isBarber, chairDone);
 router.patch("/chair/:chairId/idle", authMiddleware, isBarber, chairIdle);
 router.patch("/queue/:entryId/noshow", authMiddleware, isBarber, queueNoShow);
 
-module.exports = router;
+export default router;

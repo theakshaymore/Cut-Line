@@ -1,4 +1,4 @@
-const rateLimit = require("express-rate-limit");
+import rateLimit from "express-rate-limit";
 
 const apiRateLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -7,4 +7,4 @@ const apiRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-module.exports = { apiRateLimiter };
+export { apiRateLimiter };

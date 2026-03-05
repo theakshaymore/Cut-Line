@@ -11,6 +11,7 @@ const SalonList = () => {
   const [loading, setLoading] = useState(true);
   const [myQueue, setMyQueue] = useState(null);
   const [refreshingQueue, setRefreshingQueue] = useState(false);
+  const [showQueueDetails, setShowQueueDetails] = useState(false);
 
   const fetchMyQueue = async () => {
     try {
@@ -51,6 +52,17 @@ const SalonList = () => {
       toast.success("Queue status refreshed");
     } finally {
       setRefreshingQueue(false);
+    }
+  };
+
+  const leaveQueue = async () => {
+    try {
+      await api.delete("/queue/leave");
+      await fetchMyQueue();
+      setShowQueueDetails(false);
+      toast.success("Left queue");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to leave queue");
     }
   };
 
@@ -109,12 +121,37 @@ const SalonList = () => {
               <p className="text-sm">Position: <b>#{myQueue.entry?.position}</b></p>
               <p className="text-sm">Service: <b>{myQueue.entry?.service}</b></p>
               <p className="text-sm">Estimated wait: <b>{formatTime(myQueue.entry?.estimatedWait)}</b></p>
+              <button
+                type="button"
+                onClick={() => setShowQueueDetails(true)}
+                className="text-xs border border-slate-300 dark:border-neutral-700 rounded px-2 py-1"
+              >
+                View details
+              </button>
             </div>
           ) : (
             <p className="text-sm text-slate-600 dark:text-neutral-300">No active queue yet. Join a salon queue to see your status here.</p>
           )}
         </aside>
       </div>
+
+      {showQueueDetails && myQueue?.active && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl p-5">
+            <h3 className="text-lg font-semibold">My Queue Details</h3>
+            <div className="mt-3 space-y-2 text-sm">
+              <p><b>Salon:</b> {myQueue.entry?.salon?.name}</p>
+              <p><b>Position:</b> #{myQueue.entry?.position}</p>
+              <p><b>Service:</b> {myQueue.entry?.service}</p>
+              <p><b>Estimated Wait:</b> {formatTime(myQueue.entry?.estimatedWait)}</p>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="px-3 py-2 rounded border border-slate-300 dark:border-neutral-700" onClick={() => setShowQueueDetails(false)}>Close</button>
+              <button className="px-3 py-2 rounded bg-rose-600 text-white" onClick={leaveQueue}>Leave Queue</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };

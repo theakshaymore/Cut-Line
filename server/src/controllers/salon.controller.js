@@ -1,5 +1,5 @@
-const prisma = require("../services/prisma.service");
-const { getEstimatedWait } = require("../services/queue.service");
+import prisma from "../services/prisma.service.js";
+import { getEstimatedWait } from "../services/queue.service.js";
 
 const toRad = (v) => (v * Math.PI) / 180;
 const distanceKm = (lat1, lon1, lat2, lon2) => {
@@ -19,11 +19,20 @@ const getNearbySalons = async (req, res) => {
     const radius = Number(req.query.radius || 5);
 
     const salons = await prisma.salon.findMany({
-      where: { isVerified: true },
-      include: {
-        chairs: true,
+      where: { isVerified: true, isListed: true },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        imageUrl: true,
+        latitude: true,
+        longitude: true,
+        chairs: {
+          select: { status: true },
+        },
         queueEntries: {
           where: { status: "waiting" },
+          select: { id: true },
         },
       },
     });
@@ -42,13 +51,10 @@ const getNearbySalons = async (req, res) => {
             name: salon.name,
             address: salon.address,
             imageUrl: salon.imageUrl,
-            latitude: salon.latitude,
-            longitude: salon.longitude,
             distanceKm: Number(distance.toFixed(2)),
             queueCount: salon.queueEntries.length,
             estimatedWait,
             availableChairs: salon.chairs.filter((c) => c.status === "idle").length,
-            rating: 4.7,
           };
         })
     );
@@ -63,8 +69,8 @@ const getNearbySalons = async (req, res) => {
 const getSalonDetail = async (req, res) => {
   try {
     const { id } = req.params;
-    const salon = await prisma.salon.findUnique({
-      where: { id },
+    const salon = await prisma.salon.findFirst({
+      where: { id, isListed: true },
       include: {
         chairs: {
           include: {
@@ -93,4 +99,4 @@ const getSalonDetail = async (req, res) => {
   }
 };
 
-module.exports = { getNearbySalons, getSalonDetail };
+export { getNearbySalons, getSalonDetail };
