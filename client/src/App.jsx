@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, Link } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
 import Navbar from "./components/Navbar";
@@ -95,12 +95,6 @@ const App = () => {
           }
         />
       </Routes>
-      <Link
-        to="/admin"
-        className="fixed bottom-5 right-5 z-50 rounded-full bg-brand text-white px-4 py-2 shadow-lg hover:opacity-90"
-      >
-        Admin
-      </Link>
     </div>
   );
 };

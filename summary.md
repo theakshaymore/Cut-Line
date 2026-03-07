@@ -377,6 +377,8 @@ When future code changes are made, update this `summary.md` in the same change s
 - Added breadcrumb navigation across pages:
   - `client/src/components/Breadcrumbs.jsx`
   - wired in `client/src/App.jsx`
+- Removed the floating global Admin button from the shared app shell:
+  - `client/src/App.jsx`
 - Added public route guard behavior:
   - logged-in users are redirected away from login/register pages to role home
   - file: `client/src/App.jsx`
