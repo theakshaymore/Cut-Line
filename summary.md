@@ -379,6 +379,8 @@ When future code changes are made, update this `summary.md` in the same change s
   - wired in `client/src/App.jsx`
 - Removed the floating global Admin button from the shared app shell:
   - `client/src/App.jsx`
+- Replaced global UI font with `Space Grotesk`:
+  - `client/src/index.css`
 - Added public route guard behavior:
   - logged-in users are redirected away from login/register pages to role home
   - file: `client/src/App.jsx`
